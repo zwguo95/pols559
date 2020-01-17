@@ -1,0 +1,8 @@
+install.packages("tidyverse")
+install.packages("rmarkdown")
+install.packages("quanteda")
+install.packages("tidytext")
+install.packages("tm")
+install.packages("stringr")
+install.packages("janeaustenr")
+install.packages("ggplot2")
