@@ -4,7 +4,7 @@ output: html_notebook
 ---
 
 # The tidy text format
-```{r message=FALSE}
+```{r message=FALSE, warning=FALSE}
 library(janeaustenr)
 library(tidyverse)
 library(stringr)
@@ -134,3 +134,25 @@ ggraph(bigram_graph, layout = "fr") +
 
 ### You can find more details here: [Text Mining with R](https://www.tidytextmining.com/)
 
+# Web scraping in tidy approach 
+## Scrape a website using API: Motor Vehicle Collisions - Crashes
+* We can directly access API from [NYC Open Data Initiative](https://opendata.cityofnewyork.us/) without having a key in advance. We will use [Motor Vehicle Collisions - Crashes](https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95) dataset as an example.  
+```{r}
+library(jsonlite)
+nyc_crashes <- fromJSON("https://data.cityofnewyork.us/resource/h9gi-nx95.json") %>%
+        as_tibble()
+nyc_crashes
+```
+
+
+
+## Scrape a single website 
+```{r}
+library(rvest)
+polisci_url <- read_html("https://www.polisci.washington.edu/people")
+polisci_text <- polisci_url %>%
+        html_nodes("table") %>%
+        html_table(header=T) 
+polisci_email <- polisci_text[[1]]$`Email / Phone` 
+gsub(("(edu).*"), "\\1", polisci_email)
+```
