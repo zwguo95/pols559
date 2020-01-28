@@ -1,0 +1,231 @@
+---
+title: "Introduction-to-NLP-with-Quanteda"
+output: html_notebook
+---
+
+```{r message=FALSE}
+library(quanteda)
+library(readtext)
+library(ggplot2)
+```
+
+# Basic R commands 
+## Data types 
+```{r}
+x <- 2
+class(x) # numeric: either double or integer
+typeof(x) # double 
+
+x <- 2L
+class(x) # integer 
+typeof(x) # integer: place an L after the value will produce an integer 
+
+z <- c(1, 2.3, 5)
+typeof(z) # double
+is.double(z) # true
+```
+
+## Vectors, matrices and data frames 
+```{r}
+vec_num <- c(1, 5, 6, 3)
+vec_num
+
+vec_num[1] # R index starts from 1 
+vec_num[1:3]
+
+vec_num2 <- vec_num * 2  #arithmetic
+vec_num2
+
+vec_num3 <- append(vec_num,1:5, after = 4) #add values in a specific location
+vec_num3
+
+vec_char <- c('apple', 'banana', 'mandarin', 'melon')
+vec_char2 <- paste(c('red', 'yellow', 'orange', 'green'), vec_char) #concatenate
+vec_char2
+
+names(vec_num) <- vec_char  #assign names to numbers
+vec_num
+
+vec_gt5 <- vec_num >= 5  #is the value greater than 5
+vec_gt5
+
+vec_textmatch <- vec_char == 'apple'  #does the text match
+vec_textmatch
+```
+
+```{r}
+dat_fruit <- data.frame(name = vec_char, count = vec_num)  #combines two vectors above
+dat_fruit
+nrow(dat_fruit)
+ncol(dat_fruit)
+
+dat_fruit_sub <- subset(dat_fruit, count >= 5)  #select only those cases by value
+dat_fruit_sub
+
+dat_fruit_sub2 <- subset(dat_fruit, name == 'apple') #by name
+dat_fruit_sub2
+```
+
+
+
+```{r}
+mat <- matrix(c(1, 3, 6, 8, 3, 5, 2, 7), nrow = 4)
+mat 
+
+rownames(mat) <- c('bag1', 'bag2', 'bag3', 'bag4') 
+mat
+
+colnames(mat) <- c('yep', 'nope') 
+mat
+
+dim(mat)
+
+mat['bag1',1]  #first entry in brackets is row range; second is column
+
+rowSums(mat)
+colSums(mat)
+```
+
+# Processing textual data
+## When working with textual data strings, it is recommended to turn R’s automatic conversion of strings into factors off.
+```{r}
+# Global options
+options(stringsAsFactors = FALSE)
+getwd()
+# setwd("your path")
+```
+
+```{r}
+file_path <- "https://raw.githubusercontent.com/kbenoit/readtext/master/inst/extdata/csv/inaugCorpus.csv"
+file_text <- readtext(file_path, text_field = "texts")
+file_text
+```
+
+```{r message=F}
+# COnstruct a corpus, which is an extension of R list objects 
+corp <- corpus(file_text)
+summary(corp)
+
+# For a more meaningful identifier 
+docid <- paste(file_text$Year, 
+               file_text$FirstName, 
+               file_text$President, sep = " ")
+docnames(corp) <- docid
+summary(corp)
+
+texts(corp[1])
+cat(texts(corp[1])) # cat() will help to produce correct line breaks
+```
+
+## Familarizing with text statistics
+```{r message=FALSE, warning=FALSE}
+# To analyze which word forms the content, we need to tokenize the texts, which means all the words in the texts need to be identified and separated. A word form is also called "type"; the occurence of a type in a text is a "token"
+tokens <- tokens(corp,remove_numbers=TRUE,remove_punct=TRUE,remove_symbols=TRUE,remove_separators=TRUE)
+tokens <- tokens_remove(tokens, pattern = stopwords("en"))
+
+# Create document-term matrix (DTM)
+dtm <- dfm(tokens)
+dim(dtm) # 5 rows and 1826 columns, meaning 5 documents in the corpus and 1826 word forms/types of the vocabulary after removing some meaningless stuff
+
+# Sum columns for word counts
+freqs <- colSums(dtm)
+
+# Get vocabulary vector
+words <- colnames(dtm)
+
+# Combine words and their frequencies in a data frame
+wordlist <- data.frame(words, freqs)
+
+# reorder the wordlist by decreasing frequency
+word_indexes <- order(wordlist[, "freqs"], decreasing = TRUE)
+wordlist <- wordlist[word_indexes, ]
+
+head(wordlist)
+textplot_wordcloud(dtm)
+```
+
+
+# Web crawling and scraping 
+## Scrape a series of documents
+* Download and parse the tag overview page to extract all links to articles of interest
+* Download and scrape each individual article page
+
+Check out [here](https://tm4ss.github.io/docs/Tutorial_2_Web_crawling.html#4_optional_exercises) for more details 
+```{r}
+url <- "https://www.theguardian.com/world/angela-merkel"
+html_document <- read_html(url)
+
+links <- html_document %>%
+    html_nodes(xpath = "//div[contains(@class, 'fc-item__container')]/a") %>%
+    html_attr(name = "href")
+head(links, 3)
+
+page_numbers <- 1:3
+base_url <- "https://www.theguardian.com/world/angela-merkel?page="
+paging_urls <- paste0(base_url, page_numbers)
+
+# View first 3 urls
+head(paging_urls, 3)
+```
+
+```{r}
+scrape_guardian_article <- function(url) {
+    html_document <- read_html(url)
+      
+    title_xpath <- "//h1[contains(@class, 'content__headline')]"
+    title_text <- html_document %>%
+        html_node(xpath = title_xpath) %>%
+        html_text(trim = T)
+      
+    intro_xpath <- "//div[contains(@class, 'content__standfirst')]//p"
+    intro_text <- html_document %>%
+        html_node(xpath = intro_xpath) %>%
+        html_text(trim = T)
+      
+    body_xpath <- "//div[contains(@class, 'content__article-body')]//p"
+    body_text <- html_document %>%
+        html_nodes(xpath = body_xpath) %>%
+        html_text(trim = T) %>%
+        paste0(collapse = "\n")
+      
+    date_xpath <- "//time"
+    date_text <- html_document %>%
+        html_node(xpath = date_xpath) %>%
+        html_attr(name = "datetime") %>%
+        as.Date()
+      
+    article <- data.frame(
+        url = url,
+        date = date_text,
+        title = title_text,
+        body = paste0(intro_text, "\n", body_text)
+        )
+    
+    return(article)
+}
+```
+
+```{r}
+all_articles <- data.frame()
+for (i in 1:length(all_links)) {
+    cat("Downloading", i, "of", length(all_links), "URL:", all_links[i], "\n")
+    article <- scrape_guardian_article(all_links[i])
+# Append current article data.frame to the data.frame of all articles
+    all_articles <- rbind(all_articles, article)
+}
+```
+
+```{r}
+# View first articles
+head(all_articles, 3)
+
+# Write articles to disk
+write.csv2(all_articles, file = "data/guardian_merkel.csv")
+```
+
+**More resources on quanteda:**
+
+[quanteda: Quantitative Analysis of Textual Data](https://quanteda.io/index.html)
+
+[quanteda tutorials](https://tutorials.quanteda.io/)
+
