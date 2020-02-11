@@ -5,6 +5,7 @@ output: html_notebook
 
 ```{r message=FALSE}
 library(quanteda)
+library(rvest)
 library(readtext)
 library(ggplot2)
 ```
@@ -169,6 +170,21 @@ head(paging_urls, 3)
 ```
 
 ```{r}
+all_links <- NULL
+for (url in paging_urls) {
+# download and parse single ta overview page
+        html_document <- read_html(url)
+
+# extract links to articles
+        links <- html_document %>%
+                html_nodes(xpath = "//div[contains(@class, 'fc-item__container')]/a") %>%
+                html_attr(name = "href")
+# append links to vector of all links
+        all_links <- c(all_links, links)
+}
+```
+
+```{r}
 scrape_guardian_article <- function(url) {
     html_document <- read_html(url)
       
@@ -220,7 +236,7 @@ for (i in 1:length(all_links)) {
 head(all_articles, 3)
 
 # Write articles to disk
-write.csv2(all_articles, file = "data/guardian_merkel.csv")
+write.csv2(all_articles, file = "guardian_merkel.csv")
 ```
 
 **More resources on quanteda:**
