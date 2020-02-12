@@ -3,3 +3,4 @@ numpy
 matplotlib
 bs4
 pandas
+nltk.corpus
