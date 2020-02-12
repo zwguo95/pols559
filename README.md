@@ -5,5 +5,3 @@ This class introduces computational approaches for collecting, preparing and ana
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/zwguo95/pols559.git/master)
 
 All the course materials can be accessed via [Binder](https://mybinder.org) (click the badge).
-
-test
