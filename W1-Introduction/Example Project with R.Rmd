@@ -1,0 +1,112 @@
+---
+title: "Example Project with R"
+author: "Zhaowen Guo"
+date: ""
+output: html_document
+---
+
+# Example Project with R
+
+## How to retrieve the data?
+```{r}
+## This project is drawn upon David Robinson's example (see details here: http://varianceexplained.org/r/trump-followup/) ##
+
+library(tidyverse)
+library(lubridate)
+library(stringr)
+
+url <- 'http://www.trumptwitterarchive.com/data/realdonaldtrump/%s.json'
+all_tweets <- map(2009:2020, ~sprintf(url, .x)) %>%
+    map_df(jsonlite::fromJSON, simplifyDataFrame = TRUE) %>%
+    mutate(created_at = parse_date_time(created_at, "a b! d! H!:M!:S! z!* Y!")) %>% 
+    #See here: https://rdrr.io/cran/lubridate/man/parse_date_time.html
+    tbl_df()
+
+# take a look at the data 
+str(all_tweets)
+```
+
+## What is the most-liked tweet? What is the most-retweeted tweet? 
+```{r}
+# first we can remove the retweets 
+all_tweets %>%
+    filter(is_retweet == FALSE)
+
+# get the most-liked tweet
+like_tweet <- all_tweets %>%
+    filter(favorite_count == max(favorite_count))
+like_tweet$text
+
+# get the most-retweeted tweet 
+retweet_tweet <- all_tweets %>%
+    filter(retweet_count == max(retweet_count))
+retweet_tweet$text
+```
+
+## Let's further visualize the output. 
+```{r}
+library(ggplot2)
+ggplot(all_tweets, aes(x = created_at)) + 
+    geom_line(aes(y = retweet_count, col = "red"), size = 1) + 
+    geom_line(aes(y = favorite_count, col = "green"), size = 1, alpha = 0.5) + 
+    labs(x = "Time of Creation", y = "Number of Tweets") + 
+    scale_color_discrete(name = "Number of Tweets", labels = c("Retweets", "Likes")) + 
+    theme_classic()
+```
+
+## What about Trump's language style? 
+### Let's check out word frequency first and make a word cloud. 
+```{r}
+library(tidytext)
+all_tweet_words <- all_tweets %>%
+    mutate(text = str_replace_all(text, "https?://t.co/[A-Za-z\\d]+|&amp;", "")) %>%
+    filter(!str_detect(text, "^(\"|RT)")) %>%
+    unnest_tokens(word, text, token = "regex") %>%
+    filter(!word %in% stop_words$word, str_detect(word, "[a-z]"))
+```
+
+```{r}
+word_count <- all_tweet_words %>%
+    count(word, sort=TRUE) %>%
+    filter(substr(word, 1, 1) != '#', # omit hashtags
+           substr(word, 1, 1) != '@') %>% # omit Twitter handles
+    mutate(word = reorder(word, n)) 
+```
+
+
+```{r}
+library(wordcloud)
+pal <- brewer.pal(8,"Dark2")
+wordcloud(word_count$word, word_count$n, random.order = FALSE, max.words = 50, colors=pal) # to save time we only plot the top 50 words
+```
+
+### Sentiment Analysis 
+```{r}
+# this snippet of code is drawn upon David Robinson's post: http://varianceexplained.org/r/trump-followup/
+# AFINN lexicon assigns words with a score that runs between -5 and 5, with negative scores indicating negative sentiment and positive scores indicating positive sentiment
+all_tweet_words %>%
+    inner_join(get_sentiments("afinn")) %>%
+    group_by(month = round_date(created_at, "month")) %>%
+    summarize(average_sentiment = mean(score), words = n()) %>%
+    filter(words >= 10) %>%
+    ggplot(aes(x = month, y = average_sentiment)) +
+    geom_line() +
+    geom_hline(color = "red", lty = 2, yintercept = 0) +
+    labs(x = "Time",
+         y = "Average AFINN sentiment score",
+         title = "Sentiment over time",
+         subtitle = "Dashed line means neutral sentiment average.") + 
+    theme_classic()
+```
+
+```{r}
+str(all_tweet_words)
+ggplot(all_tweet_words, aes(x = month, y = average_sentiment)) +
+    geom_line() +
+    geom_hline(color = "red", lty = 2, yintercept = 0) +
+    labs(x = "Time",
+         y = "Average AFINN sentiment score",
+         title = "@realDonaldTrump sentiment over time",
+         subtitle = "Dashed line represents a 'neutral' sentiment average. Only months with at least 10 words present in the AFINN lexicon")
+```
+
