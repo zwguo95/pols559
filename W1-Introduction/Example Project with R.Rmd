@@ -8,12 +8,15 @@ output: html_document
 # Example Project with R
 
 ## How to retrieve the data?
-```{r}
+```{r message=FALSE, warning=FALSE}
 ## This project is drawn upon David Robinson's example (see details here: http://varianceexplained.org/r/trump-followup/) ##
 
 library(tidyverse)
 library(lubridate)
 library(stringr)
+library(textdata)
+library(wordcloud)
+library(tidytext)
 
 url <- 'http://www.trumptwitterarchive.com/data/realdonaldtrump/%s.json'
 all_tweets <- map(2009:2020, ~sprintf(url, .x)) %>%
@@ -84,12 +87,13 @@ wordcloud(word_count$word, word_count$n, random.order = FALSE, max.words = 50, c
 ```{r}
 # this snippet of code is drawn upon David Robinson's post: http://varianceexplained.org/r/trump-followup/
 # AFINN lexicon assigns words with a score that runs between -5 and 5, with negative scores indicating negative sentiment and positive scores indicating positive sentiment
-all_tweet_words %>%
+all_tweet_words <- all_tweet_words %>%
     inner_join(get_sentiments("afinn")) %>%
     group_by(month = round_date(created_at, "month")) %>%
     summarize(average_sentiment = mean(score), words = n()) %>%
-    filter(words >= 10) %>%
-    ggplot(aes(x = month, y = average_sentiment)) +
+    filter(words >= 10) 
+
+ggplot(all_tweet_words, aes(x = month, y = average_sentiment)) +
     geom_line() +
     geom_hline(color = "red", lty = 2, yintercept = 0) +
     labs(x = "Time",
@@ -99,14 +103,4 @@ all_tweet_words %>%
     theme_classic()
 ```
 
-```{r}
-str(all_tweet_words)
-ggplot(all_tweet_words, aes(x = month, y = average_sentiment)) +
-    geom_line() +
-    geom_hline(color = "red", lty = 2, yintercept = 0) +
-    labs(x = "Time",
-         y = "Average AFINN sentiment score",
-         title = "@realDonaldTrump sentiment over time",
-         subtitle = "Dashed line represents a 'neutral' sentiment average. Only months with at least 10 words present in the AFINN lexicon")
-```
 
