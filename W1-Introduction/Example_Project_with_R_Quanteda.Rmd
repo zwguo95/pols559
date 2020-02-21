@@ -1,0 +1,23 @@
+---
+title: "Example Project with R - Quanteda"
+author: "Zhaowen Guo"
+date: " "
+output: pdf_document
+---
+
+```{r}
+# Clear console
+cat("\014") 
+# Clean workspace
+rm(list=ls())
+# Load the required packages 
+library(quanteda)
+
+```
+
+# Webscraping basics 
+
+```{r}
+
+```
+
