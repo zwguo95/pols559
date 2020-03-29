@@ -5,7 +5,8 @@ import gensim
 from gensim import corpora
 from gensim.models import ldamodel 
 from nltk.corpus import stopwords  
- 
+
+# os.chdir('your directory') 
 dir_path = os.getcwd()   
 data_path = dir_path + '\hillary_emails.csv'
 df = pd.read_csv(data_path)
